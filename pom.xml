@@ -46,6 +46,8 @@
         <guava.version>18.0</guava.version>
         <slf4j.version>1.7.1</slf4j.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- output directory for reports -->
+        <project.report.output.directory>project-info</project.report.output.directory>
         <joda-time.version>2.2</joda-time.version>
         <jts.version>1.12</jts.version>
         <commons-lang3.version>3.4</commons-lang3.version>
