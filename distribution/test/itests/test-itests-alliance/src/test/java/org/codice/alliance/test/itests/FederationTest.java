@@ -16,7 +16,6 @@ package org.codice.alliance.test.itests;
 import static org.codice.ddf.itests.common.AbstractIntegrationTest.DynamicUrl.INSECURE_ROOT;
 import static org.codice.ddf.itests.common.csw.CswTestCommons.GMD_CSW_FEDERATED_SOURCE_FACTORY_PID;
 import static org.codice.ddf.itests.common.csw.CswTestCommons.getCswSourceProperties;
-
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasXPath;
@@ -36,11 +35,9 @@ import java.util.Map;
 import org.codice.alliance.nsili.mockserver.server.MockNsili;
 import org.codice.alliance.test.itests.common.AbstractAllianceIntegrationTest;
 import org.codice.alliance.test.itests.common.mock.MockNsiliRunnable;
-
 import org.codice.ddf.itests.common.annotations.AfterExam;
 import org.codice.ddf.itests.common.annotations.BeforeExam;
 import org.codice.ddf.itests.common.csw.mock.FederatedCswMockServer;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.ops4j.pax.exam.Option;
@@ -52,7 +49,6 @@ import org.osgi.service.cm.Configuration;
 import com.jayway.restassured.response.ValidatableResponse;
 
 import ddf.catalog.data.types.Core;
-
 
 /**
  * Tests the Alliance additions to DDF framework components.
@@ -266,15 +262,19 @@ public class FederationTest extends AbstractAllianceIntegrationTest {
     }
 
     private void startMockResources() throws Exception {
-        mockMgmpServer = new FederatedCswMockServer(CSW_STUB_SOURCE_ID, INSECURE_ROOT, Integer.parseInt(
-                CSW_STUP_SERVER_PORT.getPort()));
-        mockMgmpServer.setupDefaultCapabilityResponseExpectation(getAllianceItestResource("mgmp-mock-capabilities-response.xml"));
-        mockMgmpServer.setupDefaultQueryResponseExpectation(getAllianceItestResource("mgmp-mock-query-response.xml"));
+        mockMgmpServer = new FederatedCswMockServer(CSW_STUB_SOURCE_ID,
+                INSECURE_ROOT,
+                Integer.parseInt(CSW_STUP_SERVER_PORT.getPort()));
+        mockMgmpServer.setupDefaultCapabilityResponseExpectation(getAllianceItestResource(
+                "mgmp-mock-capabilities-response.xml"));
+        mockMgmpServer.setupDefaultQueryResponseExpectation(getAllianceItestResource(
+                "mgmp-mock-query-response.xml"));
         mockMgmpServer.start();
 
         MockNsiliRunnable mockServer =
-                new MockNsiliRunnable(Integer.parseInt(HTTP_WEB_PORT.getPort()), Integer.parseInt(
-                        FTP_WEB_PORT.getPort()), Integer.parseInt(CORBA_PORT.getPort()));
+                new MockNsiliRunnable(Integer.parseInt(HTTP_WEB_PORT.getPort()),
+                        Integer.parseInt(FTP_WEB_PORT.getPort()),
+                        Integer.parseInt(CORBA_PORT.getPort()));
 
         mockServerThread = new Thread(mockServer, "mockServer");
         mockServerThread.start();
@@ -321,25 +321,8 @@ public class FederationTest extends AbstractAllianceIntegrationTest {
 
         properties.put("address",
                 DynamicUrl.SECURE_ROOT + HTTPS_PORT.getPort()
-                + "/services/SecurityTokenService?wsdl");
+                        + "/services/SecurityTokenService?wsdl");
         stsClientConfig.update(properties);
-    }
-
-    private ValidatableResponse executeOpenSearch(String format, String... query) {
-        StringBuilder buffer = new StringBuilder(OPENSEARCH_PATH.getUrl()).append("?")
-                .append("format=")
-                .append(format);
-
-        for (String term : query) {
-            buffer.append("&")
-                    .append(term);
-        }
-
-        String url = buffer.toString();
-        LOGGER.info("Getting response to {}", url);
-
-        return when().get(url)
-                .then();
     }
 
     public class NsiliSourceProperties extends HashMap<String, Object> {

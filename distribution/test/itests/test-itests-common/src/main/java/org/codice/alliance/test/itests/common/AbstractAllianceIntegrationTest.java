@@ -18,19 +18,21 @@ import static org.ops4j.pax.exam.CoreOptions.maven;
 import static org.ops4j.pax.exam.CoreOptions.options;
 import static org.ops4j.pax.exam.karaf.options.KarafDistributionOption.features;
 import static org.ops4j.pax.exam.karaf.options.KarafDistributionOption.karafDistributionConfiguration;
+import static com.jayway.restassured.RestAssured.when;
 
 import java.io.File;
 import java.io.InputStream;
 
 import org.codice.ddf.itests.common.AbstractIntegrationTest;
 import org.ops4j.pax.exam.Option;
-import com.google.common.collect.ImmutableMap;
 
+import com.google.common.collect.ImmutableMap;
+import com.jayway.restassured.response.ValidatableResponse;
 
 public abstract class AbstractAllianceIntegrationTest extends AbstractIntegrationTest {
 
-    public static final String[]
-            DEFAULT_ALLIANCE_APPS = {"catalog-app", "solr-app", "spatial-app", "security-app"};
+    public static final String[] DEFAULT_ALLIANCE_APPS =
+            {"catalog-app", "solr-app", "spatial-app", "security-app"};
 
     @Override
     protected Option[] configureDistribution() {
@@ -58,6 +60,12 @@ public abstract class AbstractAllianceIntegrationTest extends AbstractIntegratio
                         .artifactId("sdk-app")
                         .type("xml")
                         .classifier("features")
+                        .versionAsInProject()),
+
+                features(maven().groupId("org.codice.alliance.distribution")
+                        .artifactId("sdk-app")
+                        .type("xml")
+                        .classifier("features")
                         .versionAsInProject()));
     }
 
@@ -70,9 +78,23 @@ public abstract class AbstractAllianceIntegrationTest extends AbstractIntegratio
     }
 
     public static String getAllianceItestResource(String filePath, ImmutableMap params) {
-        return getFileContent(filePath,
-                params, AbstractAllianceIntegrationTest.class);
-
+        return getFileContent(filePath, params, AbstractAllianceIntegrationTest.class);
     }
 
+    protected ValidatableResponse executeOpenSearch(String format, String... query) {
+        StringBuilder buffer = new StringBuilder(OPENSEARCH_PATH.getUrl()).append("?")
+                .append("format=")
+                .append(format);
+
+        for (String term : query) {
+            buffer.append("&")
+                    .append(term);
+        }
+
+        String url = buffer.toString();
+        LOGGER.info("Getting response to {}", url);
+
+        return when().get(url)
+                .then();
+    }
 }

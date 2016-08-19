@@ -128,6 +128,12 @@
         </dependency>
         <dependency>
             <groupId>org.codice.alliance.distribution</groupId>
+            <artifactId>sample-mpegts-streamgenerator</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.codice.alliance.distribution</groupId>
             <artifactId>alliance</artifactId>
             <version>${project.version}</version>
             <type>zip</type>
@@ -146,5 +152,12 @@
             <classifier>features</classifier>
             <type>xml</type>
         </dependency>
-   </dependencies>
+        <dependency>
+            <groupId>org.codice.alliance.distribution</groupId>
+            <artifactId>sdk-app</artifactId>
+            <version>${project.version}</version>
+            <classifier>features</classifier>
+            <type>xml</type>
+        </dependency>
+    </dependencies>
 </project>

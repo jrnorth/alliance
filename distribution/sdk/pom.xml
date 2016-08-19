@@ -27,7 +27,8 @@
     <groupId>org.codice.alliance.distribution</groupId>
     <name>Alliance :: Distribution :: SDK</name>
     <properties>
-
+        <netty.version>4.0.36.Final</netty.version>
+        <commons-exec.version>1.2</commons-exec.version>
     </properties>
 
     <modules>
@@ -35,6 +36,7 @@
         <module>sample-mpegts-streamgenerator</module>
         <module>sample-nsili-server</module>
         <module>sample-nsili-client</module>
+        <module>sdk-app</module>
     </modules>
     <build>
         <plugins>

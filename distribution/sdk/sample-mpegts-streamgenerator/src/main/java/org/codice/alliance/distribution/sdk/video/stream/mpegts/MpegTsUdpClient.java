@@ -23,7 +23,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -78,13 +77,15 @@ public class MpegTsUdpClient {
         String[] arguments = args[0].split(",");
 
         if (arguments.length < 1) {
-            logErrorMessage("Unable to start stream : no arguments specified.", true);
+            LOGGER.error("Unable to start stream: no arguments specified.");
+            LOGGER.error(USAGE_MESSAGE);
             return;
         }
 
         String videoFilePath = arguments[0];
         if (StringUtils.isBlank(videoFilePath)) {
-            logErrorMessage("Unable to start stream : no video file path specified.", true);
+            LOGGER.error("Unable to start stream: no video file path specified.");
+            LOGGER.error(USAGE_MESSAGE);
             return;
         }
 
@@ -94,34 +95,44 @@ public class MpegTsUdpClient {
         if (arguments.length == 1) {
             ip = DEFAULT_IP;
             port = DEFAULT_PORT;
-            LOGGER.debug("No IP or port provided.  Using defaults : {}:{}",
-                    DEFAULT_IP,
-                    DEFAULT_PORT);
+            LOGGER.debug("No IP or port provided. Using defaults: {}:{}", DEFAULT_IP, DEFAULT_PORT);
         } else if (arguments.length == 2) {
             ip = arguments[1];
             port = DEFAULT_PORT;
-            LOGGER.debug("No port provided.  Using default : {}", DEFAULT_PORT);
+            LOGGER.debug("No port provided. Using default: {}", DEFAULT_PORT);
         } else {
             ip = arguments[1];
             try {
                 port = Integer.parseInt(arguments[2]);
             } catch (NumberFormatException e) {
-                LOGGER.debug("Unable to parse specified port : {}.  Using Default : {}",
+                LOGGER.debug("Unable to parse specified port: {}. Using default: {}",
                         arguments[2],
                         DEFAULT_PORT);
                 port = DEFAULT_PORT;
             }
         }
 
-        LOGGER.trace("Video file path : {}", videoFilePath);
+        LOGGER.trace("Video file path: {}", videoFilePath);
 
-        LOGGER.trace("Streaming address : {}:{}", ip, port);
+        LOGGER.trace("Streaming address: {}:{}", ip, port);
 
-        final AtomicLong count = new AtomicLong(0);
+        Duration videoDuration = getVideoDuration(videoFilePath);
+        if (videoDuration == null) {
+            return;
+        }
+
+        long tsDurationMillis = videoDuration.toMillis();
+
+        LOGGER.trace("Video Duration: {}", tsDurationMillis);
+
+        broadcastVideo(videoFilePath, ip, port, tsDurationMillis);
+    }
+
+    public static void broadcastVideo(String videoFilePath, String ip, int port,
+            long tsDurationMillis) {
 
         EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
         try {
-
             Bootstrap bootstrap = new Bootstrap();
 
             bootstrap.group(eventLoopGroup)
@@ -137,9 +148,8 @@ public class MpegTsUdpClient {
                         @Override
                         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
                                 throws Exception {
-                            logErrorMessage(String.format(
-                                    "Exception occured handling datagram packet.  %s",
-                                    cause), false);
+                            LOGGER.error("Exception occurred while handling datagram packet.",
+                                    cause);
                             ctx.close();
                         }
                     });
@@ -154,23 +164,13 @@ public class MpegTsUdpClient {
 
             long tsPacketCount = videoFile.length() / PACKET_SIZE;
 
-            Duration videoDuration = getVideoDuration(videoFilePath);
-            if (videoDuration == null) {
-                return;
-            }
-
-            long tsDurationMillis = videoDuration.toMillis();
-
-            LOGGER.trace("Video Duration : {}", tsDurationMillis);
-
-            double delayPerPacket = (double) tsDurationMillis / (double) tsPacketCount;
+            double delayPerPacket = tsDurationMillis / (double) tsPacketCount;
 
             long startTime = System.currentTimeMillis();
 
             int packetsSent = 0;
 
             try (final InputStream fis = new BufferedInputStream(new FileInputStream(videoFile))) {
-
                 byte[] buffer = new byte[PACKET_SIZE];
                 int c;
                 while ((c = fis.read(buffer)) != -1) {
@@ -187,7 +187,7 @@ public class MpegTsUdpClient {
                         Thread.sleep((long) (delayPerPacket * 100));
                     }
                     if (packetsSent % 10000 == 0) {
-                        LOGGER.trace("Packet sent : {}", packetsSent);
+                        LOGGER.trace("Packets sent: {}", packetsSent);
                     }
                 }
             }
@@ -198,19 +198,16 @@ public class MpegTsUdpClient {
 
             if (!ch.closeFuture()
                     .await(100)) {
-                logErrorMessage("Channel time out", false);
+                LOGGER.error("Channel timeout");
             }
 
-            LOGGER.trace("Bytes sent : {} ", bytesSent);
-
+            LOGGER.trace("Bytes sent: {} ", bytesSent);
         } catch (InterruptedException | IOException e) {
-            logErrorMessage(String.format("Unable to generate stream : %s", e), false);
+            LOGGER.error("Unable to generate stream.", e);
         } finally {
             // Shut down the event loop to terminate all threads.
             eventLoopGroup.shutdownGracefully();
         }
-
-        LOGGER.trace("count = {}", count.get());
     }
 
     private static CommandLine getFFmpegInfoCommand(final String videoFilePath) {
@@ -232,12 +229,11 @@ public class MpegTsUdpClient {
             return "windows/ffmpeg.exe";
         } else {
             throw new IllegalStateException("OS is not Linux, Mac, Solaris, or Windows."
-                    + " No FFmpeg binary is available for this OS, so the plugin will not work.");
+                    + " No FFmpeg binary is available for this OS, so this client will not work.");
         }
     }
 
     private static Duration getVideoDuration(final String videoFilePath) {
-        String utfOutputStream;
         try (final ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             final PumpStreamHandler streamHandler = new PumpStreamHandler(outputStream);
             final CommandLine command = getFFmpegInfoCommand(videoFilePath);
@@ -245,22 +241,18 @@ public class MpegTsUdpClient {
                     3,
                     streamHandler);
             resultHandler.waitFor();
-            utfOutputStream = outputStream.toString(StandardCharsets.UTF_8.name());
-            return parseVideoDuration(utfOutputStream);
+            final String output = outputStream.toString(StandardCharsets.UTF_8.name());
+            return parseVideoDuration(output);
         } catch (InterruptedException e) {
-            logErrorMessage(String.format("Thread interrupted when executing ffmpeg command. %s",
-                    e), false);
-            return null;
+            LOGGER.error("Thread interrupted while executing ffmpeg command.", e);
         } catch (UnsupportedEncodingException e) {
-            logErrorMessage(String.format("Unsupported encoding in ffmpeg output. %s", e), false);
-            return null;
+            LOGGER.error("Unsupported encoding in ffmpeg output.", e);
         } catch (IllegalArgumentException e) {
-            logErrorMessage(String.format("Unable to parse video duration. %s", e), false);
-            return null;
+            LOGGER.error("Unable to parse video duration.", e);
         } catch (IOException | IllegalStateException e) {
-            logErrorMessage(String.format("Unable to execute ffmpeg command. %s", e), false);
-            return null;
+            LOGGER.error("Unable to execute ffmpeg command.", e);
         }
+        return null;
     }
 
     private static Duration parseVideoDuration(final String ffmpegOutput)
@@ -296,12 +288,5 @@ public class MpegTsUdpClient {
         executor.execute(command, resultHandler);
 
         return resultHandler;
-    }
-
-    private static void logErrorMessage(String errorMessage, boolean usageMessage) {
-        LOGGER.debug(errorMessage);
-        if (usageMessage) {
-            LOGGER.debug(USAGE_MESSAGE);
-        }
     }
 }
