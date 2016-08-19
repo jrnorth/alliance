@@ -27,8 +27,7 @@ public class ModifiedDateMetacardUpdater implements MetacardUpdater {
     @Override
     public void update(Metacard parent, Metacard child) {
 
-        Optional.of(child.getAttribute(AttributeNameConstants.TEMPORAL_END))
-                .filter(Objects::nonNull)
+        Optional.ofNullable(child.getAttribute(AttributeNameConstants.TEMPORAL_END))
                 .map(Attribute::getValue)
                 .filter(Objects::nonNull)
                 .ifPresent(value -> parent.setAttribute(new AttributeImpl(Core.MODIFIED, value)));

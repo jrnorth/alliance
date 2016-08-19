@@ -23,7 +23,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -117,11 +116,23 @@ public class MpegTsUdpClient {
 
         LOGGER.info("Streaming address : {}:{}", ip, port);
 
-        final AtomicLong count = new AtomicLong(0);
+        Duration videoDuration = getVideoDuration(videoFilePath);
+        if (videoDuration == null) {
+            return;
+        }
+
+        long tsDurationMillis = videoDuration.toMillis();
+
+        LOGGER.info("Video Duration : {}", tsDurationMillis);
+
+        broadcastVideo(videoFilePath, ip, port, tsDurationMillis);
+    }
+
+    public static void broadcastVideo(String videoFilePath, String ip, int port,
+            long tsDurationMillis) {
 
         EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
         try {
-
             Bootstrap bootstrap = new Bootstrap();
 
             bootstrap.group(eventLoopGroup)
@@ -154,16 +165,7 @@ public class MpegTsUdpClient {
 
             long tsPacketCount = videoFile.length() / PACKET_SIZE;
 
-            Duration videoDuration = getVideoDuration(videoFilePath);
-            if (videoDuration == null) {
-                return;
-            }
-
-            long tsDurationMillis = videoDuration.toMillis();
-
-            LOGGER.info("Video Duration : {}", tsDurationMillis);
-
-            double delayPerPacket = (double) tsDurationMillis / (double) tsPacketCount;
+            double delayPerPacket = tsDurationMillis / (double) tsPacketCount;
 
             long startTime = System.currentTimeMillis();
 
@@ -209,8 +211,6 @@ public class MpegTsUdpClient {
             // Shut down the event loop to terminate all threads.
             eventLoopGroup.shutdownGracefully();
         }
-
-        LOGGER.info("count = " + count.get());
     }
 
     private static CommandLine getFFmpegInfoCommand(final String videoFilePath) {
