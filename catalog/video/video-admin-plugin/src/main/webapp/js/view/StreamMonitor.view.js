@@ -108,8 +108,8 @@ define([
             onRender: function() {
                 this.setupPopOver('[data-toggle="feed-name-popover"]', 'Title of the parent metacard.');
                 this.setupPopOver('[data-toggle="url-popover"]', 'Specifies the network address (e.g. udp://localhost:50000) to be monitored. The address must be resolvable.');
-                this.setupPopOver('[data-toggle="max-dur-popover"]', 'Maximum file size (MB) before rollover. Must be >=1.');
-                this.setupPopOver('[data-toggle="max-size-popover"]', 'Maximum elapsed time in minutes before rollover. Must be >=1.');
+                this.setupPopOver('[data-toggle="max-dur-popover"]', 'Maximum elapsed time in minutes before rollover. Must be >=1.');
+                this.setupPopOver('[data-toggle="max-size-popover"]', 'Maximum file size (MB) before rollover. Must be >=1.');
                 this.setupPopOver('[data-toggle="file-templ-popover"]', 'Filename template for each chunk. The template may contain any number of the sequence "%{date=FORMAT}" where FORMAT is a Java SimpleDateFormat. Must be non-blank.');
                 this.setupPopOver('[data-toggle="delay-popover"]', 'Delay updates when creating metacards to avoid retries. Slower systems require a longer delay. The minimum value is 0 seconds and the maximum value is 60 seconds. (seconds)');
                 this.setupPopOver('[data-toggle="distance-tolerance-popover"]', 'Distance tolerance used to simplify geospatial metadata during video stream processing. The tolerance must be non-negative and the units are degrees.');
