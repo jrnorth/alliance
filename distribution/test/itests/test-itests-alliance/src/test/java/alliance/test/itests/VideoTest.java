@@ -13,6 +13,7 @@
  */
 package alliance.test.itests;
 
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.hasXPath;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
@@ -70,19 +71,22 @@ public class VideoTest extends AbstractIntegrationTest {
 
     private static final String LOCALHOST = "127.0.0.1";
 
-    private static final String DAYFLIGHT = "dayflight.mpg";
+    private static final String NIGHTFLIGHT = "nightflight.mpg";
 
-    private static final int DAYFLIGHT_DURATION_MS = 10020;
+    private static final int NIGHTFLIGHT_DURATION_MS = 20030;
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     private DynamicPort udpPort;
 
+    private int udpPortNum;
+
     @BeforeExam
     public void beforeExam() throws Exception {
         basePort = getBasePort();
         udpPort = new DynamicPort(6);
+        udpPortNum = Integer.parseInt(udpPort.getPort());
 
         getServiceManager().waitForRequiredApps(REQUIRED_APPS);
         getServiceManager().waitForAllBundles();
@@ -130,34 +134,27 @@ public class VideoTest extends AbstractIntegrationTest {
         getServiceManager().startFeature(true, "sample-mpegts-streamgenerator");
 
         final String videoFilePath = FilenameUtils.concat(temporaryFolder.getRoot()
-                .getCanonicalPath(), DAYFLIGHT);
+                .getCanonicalPath(), NIGHTFLIGHT);
         final File videoFile = new File(videoFilePath);
 
-        copyResourceToFile(DAYFLIGHT, videoFile);
-
-        final int udpPortNum = Integer.parseInt(udpPort.getPort());
+        copyResourceToFile(NIGHTFLIGHT, videoFile);
 
         final String udpStreamAddress = String.format("udp://%s:%d", LOCALHOST, udpPortNum);
 
         startUdpStreamMonitor(udpStreamAddress);
 
-        expect("The UDP stream monitor to start on port " + udpPort.getPort()).within(5,
-                TimeUnit.SECONDS)
-                .until(() -> {
-                    try (DatagramSocket socket = new DatagramSocket(udpPortNum)) {
-                        return false;
-                    } catch (SocketException e) {
-                        return true;
-                    }
-                });
+        waitForUdpStreamMonitorStart();
 
-        MpegTsUdpClient.broadcastVideo(videoFilePath, LOCALHOST, udpPortNum, DAYFLIGHT_DURATION_MS);
+        MpegTsUdpClient.broadcastVideo(videoFilePath,
+                LOCALHOST,
+                udpPortNum,
+                NIGHTFLIGHT_DURATION_MS);
 
-        expect("The parent and child metacard to be created").within(15, TimeUnit.SECONDS)
+        expect("The parent and child metacards to be created").within(15, TimeUnit.SECONDS)
                 .until(() -> executeOpenSearch("xml", "q=*").extract()
                         .xmlPath()
                         .getList("metacards.metacard")
-                        .size() == 2);
+                        .size() == 3);
 
         final ValidatableResponse parentMetacardResponse = executeOpenSearch("xml",
                 "q=UDP Stream Test").log()
@@ -173,36 +170,33 @@ public class VideoTest extends AbstractIntegrationTest {
                 .xmlPath()
                 .getString(METACARD_ID_XMLPATH);
 
+        expect("The child metacards to be linked to the parent").within(3, TimeUnit.SECONDS)
+                .until(() -> executeOpenSearch("xml", "q=mpegts-stream*").extract()
+                        .xmlPath()
+                        .getInt("metacards.metacard.string.findAll { it.@name == 'metacard.associations.derived' }.size()")
+                        == 2);
+
+        final String chunkDividerDate = "2009-06-19T07:26:30Z";
+
+        final ValidatableResponse firstChunkMetacardResponse = verifyChunkMetacard(
+                "dtend=" + chunkDividerDate,
+                1212.8282597,
+                "-110.058257 54.791167",
+                parentMetacardId);
+
+        final ValidatableResponse secondChunkMetacardResponse = verifyChunkMetacard(
+                "dtstart=" + chunkDividerDate,
+                1206.75516899,
+                "-110.058421 54.791636",
+                parentMetacardId);
+
         final long videoFileSize = videoFile.length();
 
-        final ValidatableResponse chunkMetacardResponse = executeOpenSearch("xml",
-                "q=mpegts-stream*").log()
-                .all()
-                .assertThat()
-                .body(hasXPath(METACARD_COUNT_XPATH, is("1")))
-                .body(hasXPath("/metacards/metacard/base64Binary[@name='thumbnail']/value",
-                        not(isEmptyOrNullString())))
-                .body(hasXPath("/metacards/metacard/string[@name='isr.sensor-id']/value",
-                        is("EON")))
-                .body(hasXPath("/metacards/metacard/string[@name='location.crs-name']/value",
-                        is("Geodetic WGS84")))
-                .body(hasXPath("/metacards/metacard/string[@name='resource-size']/value",
-                        is(String.valueOf(videoFileSize))))
-                .body(hasXPath(
-                        "/metacards/metacard/string[@name='metacard.associations.derived']/value",
-                        is(parentMetacardId)));
+        final long firstChunkLength = getChunkLength(firstChunkMetacardResponse);
 
-        final String chunkMetacardId = chunkMetacardResponse.extract()
-                .xmlPath()
-                .getString(METACARD_ID_XMLPATH);
+        final long secondChunkLength = getChunkLength(secondChunkMetacardResponse);
 
-        final String chunkResourceUrl =
-                REST_PATH.getUrl() + "sources/Alliance/" + chunkMetacardId + "?transform=resource";
-
-        final byte[] chunkBytes = get(chunkResourceUrl).body()
-                .asByteArray();
-
-        assertThat((long) chunkBytes.length, is(videoFileSize));
+        assertThat(firstChunkLength + secondChunkLength, is(videoFileSize));
 
         getServiceManager().stopFeature(true, "sample-mpegts-streamgenerator");
     }
@@ -223,11 +217,66 @@ public class VideoTest extends AbstractIntegrationTest {
         properties.put(UdpStreamMonitor.METATYPE_TITLE, "UDP Stream Test");
         properties.put(UdpStreamMonitor.METATYPE_MONITORED_ADDRESS, udpStreamAddress);
         properties.put(UdpStreamMonitor.METATYPE_METACARD_UPDATE_INITIAL_DELAY, 0);
+        properties.put(UdpStreamMonitor.METATYPE_BYTE_COUNT_ROLLOVER_CONDITION, 5_000_000);
         properties.put("startImmediately", true);
 
         getServiceManager().createManagedService(
                 "org.codice.alliance.video.stream.mpegts.UdpStreamMonitor",
                 properties);
+    }
+
+    private void waitForUdpStreamMonitorStart() {
+        expect("The UDP stream monitor to start on port " + udpPort.getPort()).within(5,
+                TimeUnit.SECONDS)
+                .until(() -> {
+                    try (DatagramSocket socket = new DatagramSocket(udpPortNum)) {
+                        return false;
+                    } catch (SocketException e) {
+                        return true;
+                    }
+                });
+    }
+
+    private ValidatableResponse verifyChunkMetacard(String dateBound, double expectedAltitude,
+            String expectedFrameCenterWkt, String expectedParentId) {
+        final ValidatableResponse response = executeOpenSearch("xml",
+                "q=mpegts-stream*",
+                dateBound).log()
+                .all()
+                .assertThat()
+                .body(hasXPath(METACARD_COUNT_XPATH, is("1")))
+                .body(hasXPath("/metacards/metacard/base64Binary[@name='thumbnail']/value",
+                        not(isEmptyOrNullString())))
+                .body(hasXPath("/metacards/metacard/string[@name='isr.sensor-id']/value", is("IR")))
+                .body(hasXPath("/metacards/metacard/string[@name='location.crs-name']/value",
+                        is("Geodetic WGS84")))
+                .body(hasXPath(
+                        "/metacards/metacard/geometry[@name='media.frame-center']/value/*[local-name()='Point']/*[local-name()='pos']",
+                        is(expectedFrameCenterWkt)))
+                .body(hasXPath(
+                        "/metacards/metacard/string[@name='metacard.associations.derived']/value",
+                        is(expectedParentId)));
+
+        final double altitude = response.extract()
+                .xmlPath()
+                .getDouble(
+                        "metacards.metacard.double.find { it.@name == 'location.altitude-meters' }.value");
+
+        assertThat(altitude, is(closeTo(expectedAltitude, 1e-8)));
+
+        return response;
+    }
+
+    private long getChunkLength(ValidatableResponse chunkMetacardResponse) {
+        final String chunkMetacardId = chunkMetacardResponse.extract()
+                .xmlPath()
+                .getString(METACARD_ID_XMLPATH);
+
+        final String chunkResourceUrl =
+                REST_PATH.getUrl() + "sources/Alliance/" + chunkMetacardId + "?transform=resource";
+
+        return get(chunkResourceUrl).body()
+                .asByteArray().length;
     }
 
     private ValidatableResponse executeOpenSearch(String format, String... query) {
