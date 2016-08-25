@@ -150,7 +150,7 @@ public class VideoTest extends AbstractIntegrationTest {
                 udpPortNum,
                 NIGHTFLIGHT_DURATION_MS);
 
-        expect("The parent and child metacards to be created").within(15, TimeUnit.SECONDS)
+        expect("The parent and child metacards to be created").within(10, TimeUnit.SECONDS)
                 .until(() -> executeOpenSearch("xml", "q=*").extract()
                         .xmlPath()
                         .getList("metacards.metacard")
@@ -180,7 +180,7 @@ public class VideoTest extends AbstractIntegrationTest {
 
         final ValidatableResponse firstChunkMetacardResponse = verifyChunkMetacard(
                 "dtend=" + chunkDividerDate,
-                1212.8282597,
+                1212.82825971,
                 "-110.058257 54.791167",
                 parentMetacardId);
 
