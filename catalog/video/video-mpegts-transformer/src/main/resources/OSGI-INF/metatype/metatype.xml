@@ -18,7 +18,7 @@
          name="MPEG-TS Input Transformer"
          id="org.codice.alliance.transformer.video.MpegTsInputTransformer">
 
-        <AD description="Location polygon subsample count used to reduce the number the total number of polygons."
+        <AD description="Location polygon subsample count used to reduce the total number of polygons."
             name="Subsample Count" id="subsampleCount" required="true" type="Integer"
             default="50"/>
 
