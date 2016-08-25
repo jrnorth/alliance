@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -139,9 +140,18 @@ public class VideoTest extends AbstractIntegrationTest {
 
         copyResourceToFile(NIGHTFLIGHT, videoFile);
 
+        final String streamTitle = "UDP Stream Test";
         final String udpStreamAddress = String.format("udp://%s:%d", LOCALHOST, udpPortNum);
 
-        startUdpStreamMonitor(udpStreamAddress);
+        final Map<String, Object> streamMonitorProperties = new HashMap<>();
+        streamMonitorProperties.put(UdpStreamMonitor.METATYPE_TITLE, streamTitle);
+        streamMonitorProperties.put(UdpStreamMonitor.METATYPE_MONITORED_ADDRESS, udpStreamAddress);
+        streamMonitorProperties.put(UdpStreamMonitor.METATYPE_METACARD_UPDATE_INITIAL_DELAY, 0);
+        streamMonitorProperties.put(UdpStreamMonitor.METATYPE_BYTE_COUNT_ROLLOVER_CONDITION,
+                5_000_000);
+        streamMonitorProperties.put("startImmediately", true);
+
+        startUdpStreamMonitor(streamMonitorProperties);
 
         waitForUdpStreamMonitorStart();
 
@@ -157,12 +167,11 @@ public class VideoTest extends AbstractIntegrationTest {
                         .size() == 3);
 
         final ValidatableResponse parentMetacardResponse = executeOpenSearch("xml",
-                "q=UDP Stream Test").log()
+                "q=" + streamTitle).log()
                 .all()
                 .assertThat()
                 .body(hasXPath(METACARD_COUNT_XPATH, is("1")))
-                .body(hasXPath("/metacards/metacard/string[@name='title']/value",
-                        is("UDP Stream Test")))
+                .body(hasXPath("/metacards/metacard/string[@name='title']/value", is(streamTitle)))
                 .body(hasXPath("/metacards/metacard/string[@name='resource-uri']/value",
                         is(udpStreamAddress)));
 
@@ -210,15 +219,12 @@ public class VideoTest extends AbstractIntegrationTest {
         //@formatter:on
     }
 
-    private void startUdpStreamMonitor(String udpStreamAddress) throws IOException {
+    private void startUdpStreamMonitor(Map<String, Object> propertyOverrides) throws IOException {
         final Map<String, Object> properties = getServiceManager().getMetatypeDefaults(
                 "video-mpegts-stream",
                 "org.codice.alliance.video.stream.mpegts.UdpStreamMonitor");
-        properties.put(UdpStreamMonitor.METATYPE_TITLE, "UDP Stream Test");
-        properties.put(UdpStreamMonitor.METATYPE_MONITORED_ADDRESS, udpStreamAddress);
-        properties.put(UdpStreamMonitor.METATYPE_METACARD_UPDATE_INITIAL_DELAY, 0);
-        properties.put(UdpStreamMonitor.METATYPE_BYTE_COUNT_ROLLOVER_CONDITION, 5_000_000);
-        properties.put("startImmediately", true);
+
+        properties.putAll(propertyOverrides);
 
         getServiceManager().createManagedService(
                 "org.codice.alliance.video.stream.mpegts.UdpStreamMonitor",
