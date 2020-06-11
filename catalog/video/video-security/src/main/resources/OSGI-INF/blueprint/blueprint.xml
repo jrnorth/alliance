@@ -25,7 +25,7 @@
         <property name="attributes">
             <array value-type="java.lang.String">
                 <value>http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier=videographer</value>
-                <value>http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role=videographer</value>
+                <value>http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role=videographer|guest</value>
             </array>
         </property>
         <property name="securityLogger" ref="securityLogger"/>

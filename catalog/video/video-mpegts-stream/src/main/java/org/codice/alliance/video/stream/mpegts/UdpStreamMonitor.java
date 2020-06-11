@@ -51,6 +51,8 @@ import org.codice.alliance.video.stream.mpegts.plugins.StreamEndPlugin;
 import org.codice.alliance.video.stream.mpegts.plugins.StreamShutdownPlugin;
 import org.codice.alliance.video.stream.mpegts.rollover.MegabyteCountRolloverCondition;
 import org.codice.alliance.video.stream.mpegts.rollover.RolloverCondition;
+import org.codice.ddf.platform.util.uuidgenerator.UuidGenerator;
+import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,7 +119,7 @@ public class UdpStreamMonitor implements StreamMonitor {
 
   private ChannelFuture channelFuture;
 
-  private UdpStreamProcessor udpStreamProcessor;
+  private final UdpStreamProcessor udpStreamProcessor;
 
   private String monitoredAddress;
 
@@ -131,7 +133,7 @@ public class UdpStreamMonitor implements StreamMonitor {
 
   private Integer byteCountRolloverCondition;
 
-  private Long elapsedTimeRolloverConditon;
+  private Long elapsedTimeRolloverCondition;
 
   private URI streamUri;
 
@@ -145,8 +147,8 @@ public class UdpStreamMonitor implements StreamMonitor {
 
   private String networkInterface;
 
-  public UdpStreamMonitor() {
-    udpStreamProcessor = new UdpStreamProcessor(this);
+  public UdpStreamMonitor(final BundleContext bundleContext) {
+    udpStreamProcessor = new UdpStreamProcessor(this, bundleContext);
   }
 
   UdpStreamMonitor(UdpStreamProcessor udpStreamProcessor) {
@@ -230,6 +232,11 @@ public class UdpStreamMonitor implements StreamMonitor {
   public void setRolloverCondition(RolloverCondition rolloverCondition) {
     notNull(rolloverCondition, "rolloverCondition must be non-null");
     udpStreamProcessor.setRolloverCondition(rolloverCondition);
+  }
+
+  public void setUuidGenerator(final UuidGenerator uuidGenerator) {
+    notNull(uuidGenerator, "uuidGenerator must be non-null");
+    udpStreamProcessor.setUuidGenerator(uuidGenerator);
   }
 
   private boolean isReady() {
@@ -500,7 +507,7 @@ public class UdpStreamMonitor implements StreamMonitor {
   }
 
   public Long getElapsedTimeRolloverCondition() {
-    return this.elapsedTimeRolloverConditon;
+    return this.elapsedTimeRolloverCondition;
   }
 
   /** @param milliseconds must be non-null and &gt;= {@link #ELAPSED_TIME_MIN} */
@@ -511,7 +518,7 @@ public class UdpStreamMonitor implements StreamMonitor {
         ELAPSED_TIME_MAX,
         milliseconds,
         String.format("milliseconds must be >=%d", ELAPSED_TIME_MIN));
-    this.elapsedTimeRolloverConditon = milliseconds;
+    this.elapsedTimeRolloverCondition = milliseconds;
     udpStreamProcessor.setElapsedTimeRolloverCondition(milliseconds);
   }
 
@@ -537,8 +544,7 @@ public class UdpStreamMonitor implements StreamMonitor {
       NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
 
       if (networkInterface != null) {
-        return Collections.list(networkInterface.getInetAddresses())
-            .stream()
+        return Collections.list(networkInterface.getInetAddresses()).stream()
             .filter(inetAddress -> inetAddress instanceof Inet4Address)
             .map(inetAddress -> create(networkInterface, inetAddress))
             .findFirst();
@@ -593,7 +599,7 @@ public class UdpStreamMonitor implements StreamMonitor {
     }
 
     @Override
-    protected void initChannel(NioDatagramChannel nioDatagramChannel) throws Exception {
+    protected void initChannel(NioDatagramChannel nioDatagramChannel) {
       nioDatagramChannel.pipeline().addLast(udpStreamProcessor.createChannelHandlers());
     }
   }
