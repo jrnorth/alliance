@@ -18,7 +18,7 @@
          name="Videographer Claims Configuration"
          id="org.codice.alliance.video.security.videographer.realm.VideographerRealm">
         <AD name="Attributes" id="attributes" required="true" type="String"
-            default="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier=videographer,http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role=videographer"
+            default="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier=videographer,http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role=videographer|guest"
             cardinality="1000"
             description="The attributes to be returned for any Videographer user.">
         </AD>

@@ -39,6 +39,7 @@ import org.codice.alliance.video.stream.mpegts.StreamMonitor;
 import org.codice.alliance.video.stream.mpegts.UdpStreamMonitor;
 import org.codice.alliance.video.stream.mpegts.filename.FilenameGenerator;
 import org.codice.alliance.video.stream.mpegts.metacard.MetacardUpdater;
+import org.codice.alliance.video.stream.mpegts.plugins.StreamCreationException;
 import org.codice.alliance.video.stream.mpegts.plugins.StreamCreationPlugin;
 import org.codice.alliance.video.stream.mpegts.plugins.StreamEndPlugin;
 import org.codice.alliance.video.stream.mpegts.plugins.StreamShutdownException;
@@ -50,9 +51,7 @@ import org.codice.alliance.video.stream.mpegts.rollover.RolloverAction;
 import org.codice.alliance.video.stream.mpegts.rollover.RolloverActionException;
 import org.codice.alliance.video.stream.mpegts.rollover.RolloverCondition;
 import org.codice.ddf.platform.util.uuidgenerator.UuidGenerator;
-import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.ServiceReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +68,7 @@ public class UdpStreamProcessor implements StreamProcessor {
 
   private final Context context;
 
-  private PacketBuffer packetBuffer = new PacketBuffer();
+  private final PacketBuffer packetBuffer = new PacketBuffer();
 
   private RolloverCondition rolloverCondition;
 
@@ -85,7 +84,7 @@ public class UdpStreamProcessor implements StreamProcessor {
 
   private CatalogFramework catalogFramework;
 
-  private StreamMonitor streamMonitor;
+  private final StreamMonitor streamMonitor;
 
   private long metacardUpdateInitialDelay = DEFAULT_METACARD_UPDATE_INITIAL_DELAY;
 
@@ -95,8 +94,6 @@ public class UdpStreamProcessor implements StreamProcessor {
 
   private Subject subject = null;
 
-  private Subject streamCreationSubject;
-
   private MetacardUpdater parentMetacardUpdater;
 
   private StreamEndPlugin streamEndPlugin;
@@ -105,19 +102,16 @@ public class UdpStreamProcessor implements StreamProcessor {
 
   private SecurityManager securityManager;
 
-  public UdpStreamProcessor(StreamMonitor streamMonitor) {
+  public UdpStreamProcessor(final StreamMonitor streamMonitor, final BundleContext bundleContext) {
     this.streamMonitor = streamMonitor;
     context = new Context(this);
 
     securityManager = null;
-    Bundle bundle = FrameworkUtil.getBundle(UdpStreamProcessor.class);
-    if (bundle != null) {
-      BundleContext bundleContext = bundle.getBundleContext();
-      if (bundleContext != null) {
-        ServiceReference securityManagerRef =
-            bundleContext.getServiceReference(SecurityManager.class);
-        securityManager = (SecurityManager) bundleContext.getService(securityManagerRef);
-      }
+
+    if (bundleContext != null) {
+      ServiceReference<SecurityManager> securityManagerRef =
+          bundleContext.getServiceReference(SecurityManager.class);
+      securityManager = bundleContext.getService(securityManagerRef);
     }
 
     if (securityManager == null) {
@@ -279,16 +273,16 @@ public class UdpStreamProcessor implements StreamProcessor {
     LOGGER.trace("Shutting down stream processor.");
     packetBuffer.cancelTimer();
 
-    Subject localSubject = null;
+    final Subject localSubject;
     try {
       localSubject = getSecuritySubject("127.0.0.1");
       if (localSubject == null) {
-        LOGGER.debug(
-            "Unable to run stream shutdown plugin. Failed to get a videographer subject. ");
+        LOGGER.debug("Unable to run stream shutdown plugin. Failed to get a videographer subject.");
         return;
       }
     } catch (SecurityServiceException e) {
       LOGGER.debug("Unable to run stream shutdown plugin", e);
+      return;
     }
 
     localSubject.execute(
@@ -326,8 +320,8 @@ public class UdpStreamProcessor implements StreamProcessor {
     }
   }
 
-  private boolean areNonNull(List<Object> listofObjects) {
-    return listofObjects.stream().allMatch(Objects::nonNull);
+  private boolean areNonNull(List<Object> objects) {
+    return objects.stream().allMatch(Objects::nonNull);
   }
 
   /**
@@ -400,37 +394,28 @@ public class UdpStreamProcessor implements StreamProcessor {
   }
 
   /**
-   * Only used for testing so unit tests can mock the subject.
-   *
-   * @param streamCreationSubject security subject
-   */
-  void setStreamCreationSubject(Subject streamCreationSubject) {
-    this.streamCreationSubject = streamCreationSubject;
-  }
-
-  /**
    * Initializes the processor. Users should call {@link #isReady()} first to make sure the
    * processor is ready to run.
    */
   public void init() {
-
-    Subject localSubject = null;
+    final Subject localSubject;
     try {
       localSubject = getSecuritySubject("127.0.0.1");
       if (localSubject == null) {
-        LOGGER.debug("Unable to run stream shutdown plugin. Failed to get a videographer subject.");
+        LOGGER.debug("Unable to run stream creation plugin. Failed to get a videographer subject.");
         return;
       }
     } catch (SecurityServiceException e) {
-      LOGGER.debug("Unable to run stream shutdown plugin", e);
+      LOGGER.debug("Unable to run stream creation plugin", e);
+      return;
     }
 
     localSubject.execute(
         () -> {
           try {
-            streamShutdownPlugin.onShutdown(context);
-          } catch (StreamShutdownException e) {
-            LOGGER.debug("unable to run stream shutdown plugin", e);
+            streamCreationPlugin.onCreate(context);
+          } catch (StreamCreationException e) {
+            LOGGER.debug("Unable to run stream creation plugin", e);
           }
         });
   }
