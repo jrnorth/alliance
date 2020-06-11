@@ -26,7 +26,6 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import org.codice.alliance.video.stream.mpegts.SimpleSubject;
 import org.codice.alliance.video.stream.mpegts.StreamMonitor;
 import org.codice.alliance.video.stream.mpegts.filename.FilenameGenerator;
 import org.codice.alliance.video.stream.mpegts.metacard.MetacardUpdater;
@@ -56,7 +55,6 @@ public class UdpStreamProcessorTest {
     udpStreamProcessor.setCatalogFramework(catalogFramework);
     udpStreamProcessor.setStreamCreationPlugin(context -> {});
     udpStreamProcessor.setStreamShutdownPlugin(mock(StreamShutdownPlugin.class));
-    udpStreamProcessor.setStreamCreationSubject(new SimpleSubject());
     udpStreamProcessor.setParentMetacardUpdater(mock(MetacardUpdater.class));
 
     udpStreamProcessor.init();
