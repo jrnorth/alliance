@@ -40,6 +40,7 @@ import org.codice.alliance.video.stream.mpegts.StreamMonitor;
 import org.codice.alliance.video.stream.mpegts.UdpStreamMonitor;
 import org.codice.alliance.video.stream.mpegts.filename.FilenameGenerator;
 import org.codice.alliance.video.stream.mpegts.metacard.MetacardUpdater;
+import org.codice.alliance.video.stream.mpegts.plugins.StreamCreationException;
 import org.codice.alliance.video.stream.mpegts.plugins.StreamCreationPlugin;
 import org.codice.alliance.video.stream.mpegts.plugins.StreamEndPlugin;
 import org.codice.alliance.video.stream.mpegts.plugins.StreamShutdownException;
@@ -70,7 +71,7 @@ public class UdpStreamProcessor implements StreamProcessor {
 
   private final Context context;
 
-  private PacketBuffer packetBuffer = new PacketBuffer();
+  private final PacketBuffer packetBuffer = new PacketBuffer();
 
   private RolloverCondition rolloverCondition;
 
@@ -86,7 +87,7 @@ public class UdpStreamProcessor implements StreamProcessor {
 
   private CatalogFramework catalogFramework;
 
-  private StreamMonitor streamMonitor;
+  private final StreamMonitor streamMonitor;
 
   private long metacardUpdateInitialDelay = DEFAULT_METACARD_UPDATE_INITIAL_DELAY;
 
@@ -95,8 +96,6 @@ public class UdpStreamProcessor implements StreamProcessor {
   private StreamShutdownPlugin streamShutdownPlugin;
 
   private Subject subject = null;
-
-  private Subject streamCreationSubject;
 
   private MetacardUpdater parentMetacardUpdater;
 
@@ -119,15 +118,15 @@ public class UdpStreamProcessor implements StreamProcessor {
     if (bundle != null) {
       BundleContext bundleContext = bundle.getBundleContext();
       if (bundleContext != null) {
-        ServiceReference securityManagerRef =
+        ServiceReference<SecurityManager> securityManagerRef =
             bundleContext.getServiceReference(SecurityManager.class);
-        securityManager = (SecurityManager) bundleContext.getService(securityManagerRef);
-        ServiceReference subjectOperationsRef =
+        securityManager = bundleContext.getService(securityManagerRef);
+        ServiceReference<SubjectOperations> subjectOperationsRef =
             bundleContext.getServiceReference(SubjectOperations.class);
-        subjectOperations = (SubjectOperations) bundleContext.getService(subjectOperationsRef);
-        ServiceReference securityLoggerRef =
+        subjectOperations = bundleContext.getService(subjectOperationsRef);
+        ServiceReference<SecurityLogger> securityLoggerRef =
             bundleContext.getServiceReference(SecurityLogger.class);
-        securityLogger = (SecurityLogger) bundleContext.getService(securityLoggerRef);
+        securityLogger = bundleContext.getService(securityLoggerRef);
       }
     }
 
@@ -297,7 +296,7 @@ public class UdpStreamProcessor implements StreamProcessor {
     LOGGER.trace("Shutting down stream processor.");
     packetBuffer.cancelTimer();
 
-    Subject localSubject = null;
+    final Subject localSubject;
     try {
       localSubject = getSecuritySubject("127.0.0.1");
       if (localSubject == null) {
@@ -307,6 +306,7 @@ public class UdpStreamProcessor implements StreamProcessor {
       }
     } catch (SecurityServiceException e) {
       LOGGER.debug("Unable to run stream shutdown plugin", e);
+      return;
     }
 
     localSubject.execute(
@@ -344,8 +344,8 @@ public class UdpStreamProcessor implements StreamProcessor {
     }
   }
 
-  private boolean areNonNull(List<Object> listofObjects) {
-    return listofObjects.stream().allMatch(Objects::nonNull);
+  private boolean areNonNull(List<Object> objects) {
+    return objects.stream().allMatch(Objects::nonNull);
   }
 
   /**
@@ -418,37 +418,28 @@ public class UdpStreamProcessor implements StreamProcessor {
   }
 
   /**
-   * Only used for testing so unit tests can mock the subject.
-   *
-   * @param streamCreationSubject security subject
-   */
-  void setStreamCreationSubject(Subject streamCreationSubject) {
-    this.streamCreationSubject = streamCreationSubject;
-  }
-
-  /**
    * Initializes the processor. Users should call {@link #isReady()} first to make sure the
    * processor is ready to run.
    */
   public void init() {
-
-    Subject localSubject = null;
+    final Subject localSubject;
     try {
       localSubject = getSecuritySubject("127.0.0.1");
       if (localSubject == null) {
-        LOGGER.debug("Unable to run stream shutdown plugin. Failed to get a videographer subject.");
+        LOGGER.debug("Unable to run stream creation plugin. Failed to get a videographer subject.");
         return;
       }
     } catch (SecurityServiceException e) {
-      LOGGER.debug("Unable to run stream shutdown plugin", e);
+      LOGGER.debug("Unable to run stream creation plugin", e);
+      return;
     }
 
     localSubject.execute(
         () -> {
           try {
-            streamShutdownPlugin.onShutdown(context);
-          } catch (StreamShutdownException e) {
-            LOGGER.debug("unable to run stream shutdown plugin", e);
+            streamCreationPlugin.onCreate(context);
+          } catch (StreamCreationException e) {
+            LOGGER.debug("Unable to run stream creation plugin", e);
           }
         });
   }
