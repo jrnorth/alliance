@@ -52,6 +52,7 @@ import org.codice.alliance.video.stream.mpegts.plugins.StreamShutdownPlugin;
 import org.codice.alliance.video.stream.mpegts.rollover.MegabyteCountRolloverCondition;
 import org.codice.alliance.video.stream.mpegts.rollover.RolloverCondition;
 import org.codice.ddf.platform.util.uuidgenerator.UuidGenerator;
+import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,8 +147,8 @@ public class UdpStreamMonitor implements StreamMonitor {
 
   private String networkInterface;
 
-  public UdpStreamMonitor() {
-    udpStreamProcessor = new UdpStreamProcessor(this);
+  public UdpStreamMonitor(final BundleContext bundleContext) {
+    udpStreamProcessor = new UdpStreamProcessor(this, bundleContext);
   }
 
   UdpStreamMonitor(UdpStreamProcessor udpStreamProcessor) {
@@ -543,8 +544,7 @@ public class UdpStreamMonitor implements StreamMonitor {
       NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
 
       if (networkInterface != null) {
-        return Collections.list(networkInterface.getInetAddresses())
-            .stream()
+        return Collections.list(networkInterface.getInetAddresses()).stream()
             .filter(inetAddress -> inetAddress instanceof Inet4Address)
             .map(inetAddress -> create(networkInterface, inetAddress))
             .findFirst();

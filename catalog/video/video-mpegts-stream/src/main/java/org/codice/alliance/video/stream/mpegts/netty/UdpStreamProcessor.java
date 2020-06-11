@@ -52,9 +52,7 @@ import org.codice.alliance.video.stream.mpegts.rollover.RolloverAction;
 import org.codice.alliance.video.stream.mpegts.rollover.RolloverActionException;
 import org.codice.alliance.video.stream.mpegts.rollover.RolloverCondition;
 import org.codice.ddf.platform.util.uuidgenerator.UuidGenerator;
-import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.ServiceReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,25 +107,21 @@ public class UdpStreamProcessor implements StreamProcessor {
 
   private SecurityLogger securityLogger;
 
-  public UdpStreamProcessor(StreamMonitor streamMonitor) {
+  public UdpStreamProcessor(final StreamMonitor streamMonitor, final BundleContext bundleContext) {
     this.streamMonitor = streamMonitor;
     context = new Context(this);
 
     securityManager = null;
-    Bundle bundle = FrameworkUtil.getBundle(UdpStreamProcessor.class);
-    if (bundle != null) {
-      BundleContext bundleContext = bundle.getBundleContext();
-      if (bundleContext != null) {
-        ServiceReference<SecurityManager> securityManagerRef =
-            bundleContext.getServiceReference(SecurityManager.class);
-        securityManager = bundleContext.getService(securityManagerRef);
-        ServiceReference<SubjectOperations> subjectOperationsRef =
-            bundleContext.getServiceReference(SubjectOperations.class);
-        subjectOperations = bundleContext.getService(subjectOperationsRef);
-        ServiceReference<SecurityLogger> securityLoggerRef =
-            bundleContext.getServiceReference(SecurityLogger.class);
-        securityLogger = bundleContext.getService(securityLoggerRef);
-      }
+    if (bundleContext != null) {
+      ServiceReference<SecurityManager> securityManagerRef =
+          bundleContext.getServiceReference(SecurityManager.class);
+      securityManager = bundleContext.getService(securityManagerRef);
+      ServiceReference<SubjectOperations> subjectOperationsRef =
+          bundleContext.getServiceReference(SubjectOperations.class);
+      subjectOperations = bundleContext.getService(subjectOperationsRef);
+      ServiceReference<SecurityLogger> securityLoggerRef =
+          bundleContext.getServiceReference(SecurityLogger.class);
+      securityLogger = bundleContext.getService(securityLoggerRef);
     }
 
     if (securityManager == null) {
@@ -300,8 +294,7 @@ public class UdpStreamProcessor implements StreamProcessor {
     try {
       localSubject = getSecuritySubject("127.0.0.1");
       if (localSubject == null) {
-        LOGGER.debug(
-            "Unable to run stream shutdown plugin. Failed to get a videographer subject. ");
+        LOGGER.debug("Unable to run stream shutdown plugin. Failed to get a videographer subject.");
         return;
       }
     } catch (SecurityServiceException e) {

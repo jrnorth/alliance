@@ -87,6 +87,7 @@
         interface="org.codice.alliance.video.stream.mpegts.StreamMonitor">
       <cm:managed-component class="org.codice.alliance.video.stream.mpegts.UdpStreamMonitor"
                               init-method="init" destroy-method="destroy">
+        <argument ref="blueprintBundleContext"/>
 
         <property name="startImmediately" value="false"/>
 
