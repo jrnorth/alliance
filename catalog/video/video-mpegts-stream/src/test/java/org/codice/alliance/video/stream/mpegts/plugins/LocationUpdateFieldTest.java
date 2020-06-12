@@ -28,18 +28,19 @@ import java.util.Collections;
 import org.codice.alliance.libs.klv.GeometryOperator;
 import org.codice.alliance.video.stream.mpegts.Context;
 import org.junit.Test;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKTReader;
 import org.mockito.ArgumentCaptor;
 
 public class LocationUpdateFieldTest {
 
   @Test
-  public void testPolygon() {
+  public void testPolygon() throws ParseException {
 
     String wktChild1 = "POLYGON ((0  0, 10 0, 10 10, 0  10, 0  0))";
     String wktChild2 = "POLYGON ((10 0, 20 0, 20 10, 10 10, 10 0))";
     String wktChild3 = "POLYGON ((20 0, 30 0, 30 10, 20 10, 20 0))";
-
-    String wktExpected = "POLYGON ((20 0, 10 0, 0 0, 0 10, 10 10, 20 10, 30 10, 30 0, 20 0))";
 
     Metacard parentMetacard = mock(Metacard.class);
 
@@ -64,7 +65,14 @@ public class LocationUpdateFieldTest {
 
     verify(parentMetacard).setAttribute(captor.capture());
 
-    assertThat(captor.getValue().getValue(), is(wktExpected));
+    WKTReader wktReader = new WKTReader();
+    String expectedWkt = "POLYGON ((20 0, 10 0, 0 0, 0 10, 10 10, 20 10, 30 10, 30 0, 20 0))";
+    Geometry expected = wktReader.read(expectedWkt).norm();
+
+    String actualWkt = (String) captor.getValue().getValue();
+    Geometry actual = wktReader.read(actualWkt).norm();
+
+    assertThat(actual, is(expected));
   }
 
   @Test

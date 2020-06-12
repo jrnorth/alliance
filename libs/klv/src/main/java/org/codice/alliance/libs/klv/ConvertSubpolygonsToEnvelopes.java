@@ -16,6 +16,8 @@ package org.codice.alliance.libs.klv;
 import java.util.stream.IntStream;
 import javax.annotation.concurrent.ThreadSafe;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +29,9 @@ import org.slf4j.LoggerFactory;
 public class ConvertSubpolygonsToEnvelopes implements GeometryOperator {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConvertSubpolygonsToEnvelopes.class);
 
+  private static final GeometryFactory GEOMETRY_FACTORY =
+      new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING), 4326);
+
   @Override
   public Geometry apply(Geometry geometry, Context context) {
 
@@ -36,12 +41,16 @@ public class ConvertSubpolygonsToEnvelopes implements GeometryOperator {
 
     LOGGER.trace("Converting geometry: {}", geometry);
 
-    Geometry envelopePolygons =
+    Geometry[] envelopes =
         IntStream.range(0, geometry.getNumGeometries())
             .mapToObj(geometry::getGeometryN)
             .map(Geometry::getEnvelope)
-            .reduce(Geometry::union)
-            .orElse(geometry);
+            .toArray(Geometry[]::new);
+
+    Geometry envelopePolygons =
+        envelopes.length == 1
+            ? envelopes[0]
+            : GEOMETRY_FACTORY.createGeometryCollection(envelopes).union();
 
     LOGGER.trace(
         "Converted geometry: {}\n isValid? {}", envelopePolygons, envelopePolygons.isValid());
