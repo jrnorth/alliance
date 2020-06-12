@@ -25,12 +25,17 @@ import org.codice.alliance.libs.klv.GeometryOperator;
 import org.codice.alliance.libs.klv.GeometryUtility;
 import org.codice.alliance.video.stream.mpegts.Context;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.io.WKTWriter;
 
 /** Update the parent metacard location field with the union of each child location field. */
 @NotThreadSafe
 public class LocationUpdateField extends UpdateParent.BaseUpdateField {
+
+  private static final GeometryFactory GEOMETRY_FACTORY =
+      new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING), 4326);
 
   private final GeometryOperator preUnionGeometryOperator;
 
@@ -82,7 +87,18 @@ public class LocationUpdateField extends UpdateParent.BaseUpdateField {
 
     geometries
         .stream()
-        .reduce(Geometry::union)
+        .reduce(
+            (left, right) -> {
+              final int numGeometries = left.getNumGeometries() + right.getNumGeometries();
+              final Geometry[] bothGeometries = new Geometry[numGeometries];
+              for (int n = 0; n < left.getNumGeometries(); ++n) {
+                bothGeometries[n] = left.getGeometryN(n);
+              }
+              for (int n = left.getNumGeometries(); n < numGeometries; ++n) {
+                bothGeometries[n] = right.getGeometryN(n);
+              }
+              return GEOMETRY_FACTORY.createGeometryCollection(bothGeometries).union();
+            })
         .ifPresent(geometry -> intermediateGeometry = geometry);
   }
 
