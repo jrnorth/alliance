@@ -27,13 +27,13 @@ public class ConvertSubpolygonsToEnvelopesTest {
 
   private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
 
+  private final ConvertSubpolygonsToEnvelopes convertSubpolygonsToEnvelopes =
+      new ConvertSubpolygonsToEnvelopes();
+
   @Test
-  public void testNullSubpolygon() throws ParseException {
+  public void testNullSubpolygon() {
 
     Geometry geometry = null;
-
-    ConvertSubpolygonsToEnvelopes convertSubpolygonsToEnvelopes =
-        new ConvertSubpolygonsToEnvelopes();
 
     Geometry actual = convertSubpolygonsToEnvelopes.apply(geometry, new GeometryOperator.Context());
 
@@ -41,12 +41,9 @@ public class ConvertSubpolygonsToEnvelopesTest {
   }
 
   @Test
-  public void testEmptySubpolygon() throws ParseException {
+  public void testEmptySubpolygon() {
 
     Geometry geometry = GEOMETRY_FACTORY.createMultiPolygon(null);
-
-    ConvertSubpolygonsToEnvelopes convertSubpolygonsToEnvelopes =
-        new ConvertSubpolygonsToEnvelopes();
 
     Geometry actual = convertSubpolygonsToEnvelopes.apply(geometry, new GeometryOperator.Context());
 
@@ -61,9 +58,6 @@ public class ConvertSubpolygonsToEnvelopesTest {
     WKTReader wktReader = new WKTReader();
 
     Geometry geometry = wktReader.read(wkt);
-
-    ConvertSubpolygonsToEnvelopes convertSubpolygonsToEnvelopes =
-        new ConvertSubpolygonsToEnvelopes();
 
     Geometry actual = convertSubpolygonsToEnvelopes.apply(geometry, new GeometryOperator.Context());
 
@@ -80,14 +74,33 @@ public class ConvertSubpolygonsToEnvelopesTest {
 
     Geometry geometry = wktReader.read(wkt);
 
-    ConvertSubpolygonsToEnvelopes convertSubpolygonsToEnvelopes =
-        new ConvertSubpolygonsToEnvelopes();
-
     Geometry actual = convertSubpolygonsToEnvelopes.apply(geometry, new GeometryOperator.Context());
 
     Geometry expected =
         wktReader.read(
             "MULTIPOLYGON (((0 0, 0 20, 20 20, 20 0, 0 0)), ((0 40, 0 60, 20 60, 20 40, 0 40)))");
+
+    assertThat(actual, is(expected));
+  }
+
+  // This test was adapted from a real video stream that failed the `ConvertSubpolygonsToEnvelopes`
+  // step. It failed because the geometry was a GeometryCollection of different types of geometries
+  // and the union code couldn't handle unioning GeometryCollections.
+  @Test
+  public void testGeometryCollection() throws ParseException {
+    final String wkt =
+        "GEOMETRYCOLLECTION (POINT (0 0), LINESTRING (10 10, 20 20), LINESTRING (20 20, 10 30))";
+
+    final WKTReader wktReader = new WKTReader();
+
+    final Geometry geometry = wktReader.read(wkt);
+
+    final Geometry actual =
+        convertSubpolygonsToEnvelopes.apply(geometry, new GeometryOperator.Context());
+
+    final Geometry expected =
+        wktReader.read(
+            "GEOMETRYCOLLECTION( POINT (0 0), POLYGON ((10 10, 10 20, 10 30, 20 30, 20 20, 20 10, 10 10)))");
 
     assertThat(actual, is(expected));
   }
