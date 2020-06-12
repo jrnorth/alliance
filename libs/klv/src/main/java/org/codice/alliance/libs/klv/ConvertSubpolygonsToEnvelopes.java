@@ -17,7 +17,6 @@ import java.util.stream.IntStream;
 import javax.annotation.concurrent.ThreadSafe;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,8 +28,7 @@ import org.slf4j.LoggerFactory;
 public class ConvertSubpolygonsToEnvelopes implements GeometryOperator {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConvertSubpolygonsToEnvelopes.class);
 
-  private static final GeometryFactory GEOMETRY_FACTORY =
-      new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING), 4326);
+  private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
 
   @Override
   public Geometry apply(Geometry geometry, Context context) {
