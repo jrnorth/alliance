@@ -26,7 +26,6 @@ import org.codice.alliance.libs.klv.GeometryUtility;
 import org.codice.alliance.video.stream.mpegts.Context;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.io.WKTWriter;
 
@@ -34,8 +33,7 @@ import org.locationtech.jts.io.WKTWriter;
 @NotThreadSafe
 public class LocationUpdateField extends UpdateParent.BaseUpdateField {
 
-  private static final GeometryFactory GEOMETRY_FACTORY =
-      new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING), 4326);
+  private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
 
   private final GeometryOperator preUnionGeometryOperator;
 
