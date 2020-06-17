@@ -66,7 +66,7 @@ public class CatalogUpdateRetry {
       Thread.sleep(sleep);
     } catch (InterruptedException e) {
       LOGGER.trace("interrupted while waiting to attempt update request", e);
-      Thread.interrupted();
+      Thread.currentThread().interrupt();
       return true;
     }
     return false;
