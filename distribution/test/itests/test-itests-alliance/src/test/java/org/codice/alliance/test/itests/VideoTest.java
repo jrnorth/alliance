@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
+import com.jayway.restassured.path.xml.config.XmlPathConfig;
 import com.jayway.restassured.response.ValidatableResponse;
 import ddf.catalog.Constants;
 import ddf.catalog.data.Metacard;
@@ -46,8 +47,6 @@ import org.codice.alliance.distribution.sdk.video.stream.mpegts.MpegTsUdpClient;
 import org.codice.alliance.test.itests.common.AbstractAllianceIntegrationTest;
 import org.codice.alliance.video.stream.mpegts.UdpStreamMonitor;
 import org.codice.ddf.itests.common.annotations.ConditionalIgnoreRule;
-import org.codice.ddf.itests.common.annotations.ConditionalIgnoreRule.ConditionalIgnore;
-import org.codice.ddf.itests.common.annotations.SkipUnstableTest;
 import org.codice.ddf.test.common.annotations.BeforeExam;
 import org.junit.After;
 import org.junit.Rule;
@@ -85,7 +84,7 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
   @BeforeExam
   public void beforeExam() throws Exception {
     waitForSystemReady();
-    getSecurityPolicy().configureRestForBasic();
+    getSecurityPolicy().configureRestForGuest();
     waitForSystemReady();
     udpPort = new DynamicPort(6);
     udpPortNum = Integer.parseInt(udpPort.getPort());
@@ -97,7 +96,6 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
   }
 
   @Test
-  @ConditionalIgnore(condition = SkipUnstableTest.class) // CAL-300
   public void testStreamingVideo() throws Exception {
     getServiceManager().startFeature(true, "sample-mpegts-streamgenerator");
 
@@ -131,10 +129,8 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
         false,
         null);
 
-    Thread.sleep(2000);
-
     await("The parent and child metacards to be created")
-        .atMost(15, TimeUnit.SECONDS)
+        .atMost(1, TimeUnit.MINUTES)
         .pollDelay(1, TimeUnit.SECONDS)
         .until(
             () ->
@@ -145,30 +141,41 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
                         .size()
                     == 3);
 
+    final XmlPathConfig xmlPathConfig =
+        new XmlPathConfig().declaredNamespace("gml", "http://www.opengis.net/gml");
     final ValidatableResponse parentMetacardResponse =
-        executeOpenSearch("xml", "q=" + streamTitle)
-            .log()
-            .all()
-            .assertThat()
-            .body(hasXPath(METACARD_COUNT_XPATH, is("1")))
-            .body(hasXPath("/metacards/metacard/string[@name='title']/value", is(streamTitle)))
-            .body(
-                hasXPath(
-                    "/metacards/metacard/string[@name='resource-uri']/value", is(udpStreamAddress)))
-            .body(
-                hasXPath(
-                    "/metacards/metacard/geometry[@name='media.frame-center']/value/*[local-name()='LineString']/*[local-name()='pos'][2]",
-                    is("-110.058257 54.791167")))
-            .body(
-                hasXPath(
-                    "/metacards/metacard/geometry[@name='location']/value/*[local-name()='MultiPoint']/*[local-name()='pointMember'][2]/*[local-name()='Point']/*[local-name()='pos']",
-                    is("-110.058257 54.791167")));
+        await("The parent metacard location to be updated")
+            .atMost(1, TimeUnit.MINUTES)
+            .pollDelay(1, TimeUnit.SECONDS)
+            .until(
+                () -> executeOpenSearch("xml", "q=" + streamTitle),
+                response ->
+                    response
+                            .extract()
+                            .xmlPath(xmlPathConfig)
+                            .getString(
+                                "metacards.metacard.geometry.find{it.@name == 'media.frame-center'}.value.'gml:LineString'.'gml:pos'[1]")
+                            .equals("-110.058257 54.791167")
+                        && response
+                            .extract()
+                            .xmlPath(xmlPathConfig)
+                            .getString(
+                                "metacards.metacard.geometry.find{it.@name == 'location'}.value.'gml:MultiPoint'.'gml:pointMember'[1].'gml:Point'.'gml:pos'")
+                            .equals("-110.058257 54.791167"));
+
+    parentMetacardResponse
+        .assertThat()
+        .body(hasXPath(METACARD_COUNT_XPATH, is("1")))
+        .body(hasXPath("/metacards/metacard/string[@name='title']/value", is(streamTitle)))
+        .body(
+            hasXPath(
+                "/metacards/metacard/string[@name='resource-uri']/value", is(udpStreamAddress)));
 
     final String parentMetacardId =
         parentMetacardResponse.extract().xmlPath().getString(METACARD_ID_XMLPATH);
 
     await("The child metacards to be linked to the parent")
-        .atMost(3, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
         .until(
             () ->
                 executeOpenSearch("xml", "q=mpegts-stream*")
@@ -221,12 +228,10 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
   }
 
   private void copyResourceToFile(String resource, File file) throws IOException {
-    // @formatter:off
     try (InputStream is = getAllianceItestResourceAsStream(resource);
         FileOutputStream fos = new FileOutputStream(file)) {
       IOUtils.copy(is, fos);
     }
-    // @formatter:on
   }
 
   private void startUdpStreamMonitor(Map<String, Object> propertyOverrides) throws IOException {
@@ -263,7 +268,7 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
     final ValidatableResponse response =
         executeOpenSearch("xml", "q=mpegts-stream*", dateBound)
             .log()
-            .all()
+            .ifValidationFails()
             .assertThat()
             .body(hasXPath(METACARD_COUNT_XPATH, is("1")))
             .body(
