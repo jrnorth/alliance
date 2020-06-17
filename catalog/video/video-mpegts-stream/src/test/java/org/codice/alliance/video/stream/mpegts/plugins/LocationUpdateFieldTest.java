@@ -76,6 +76,47 @@ public class LocationUpdateFieldTest {
   }
 
   @Test
+  public void testGeometryCollection() throws ParseException {
+    String wktChild1 = "GEOMETRYCOLLECTION(POINT(40 10), POLYGON((0 0, 10 0, 10 10, 0 10, 0 0)))";
+    String wktChild2 = "POLYGON((10 0, 20 0, 20 10, 10 10, 10 0))";
+    String wktChild3 =
+        "GEOMETRYCOLLECTION(POINT(50 10), POLYGON((20 0, 30 0, 30 10, 20 10, 20 0)))";
+
+    Metacard parentMetacard = mock(Metacard.class);
+
+    Metacard childMetacard1 = mock(Metacard.class);
+    when(childMetacard1.getLocation()).thenReturn(wktChild1);
+    Metacard childMetacard2 = mock(Metacard.class);
+    when(childMetacard2.getLocation()).thenReturn(wktChild2);
+    Metacard childMetacard3 = mock(Metacard.class);
+    when(childMetacard3.getLocation()).thenReturn(wktChild3);
+
+    LocationUpdateField locUpdateField =
+        new LocationUpdateField(GeometryOperator.IDENTITY, GeometryOperator.IDENTITY);
+
+    Context context = mock(Context.class);
+
+    locUpdateField.updateField(parentMetacard, Collections.singletonList(childMetacard1), context);
+    locUpdateField.updateField(
+        parentMetacard, Arrays.asList(childMetacard2, childMetacard3), context);
+    locUpdateField.end(parentMetacard, context);
+
+    ArgumentCaptor<Attribute> captor = ArgumentCaptor.forClass(Attribute.class);
+
+    verify(parentMetacard).setAttribute(captor.capture());
+
+    WKTReader wktReader = new WKTReader();
+    String expectedWkt =
+        "GEOMETRYCOLLECTION(POINT(40 10), POINT(50 10), POLYGON ((20 0, 10 0, 0 0, 0 10, 10 10, 20 10, 30 10, 30 0, 20 0)))";
+    Geometry expected = wktReader.read(expectedWkt).norm();
+
+    String actualWkt = (String) captor.getValue().getValue();
+    Geometry actual = wktReader.read(actualWkt).norm();
+
+    assertThat(actual, is(expected));
+  }
+
+  @Test
   public void testWhenChildrenAreMissingLocation() {
 
     Metacard parentMetacard = mock(Metacard.class);
