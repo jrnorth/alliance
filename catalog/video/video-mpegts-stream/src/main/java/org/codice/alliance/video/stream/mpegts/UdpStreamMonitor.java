@@ -343,6 +343,7 @@ public class UdpStreamMonitor implements StreamMonitor {
         eventLoopGroup.shutdownGracefully().sync();
       } catch (InterruptedException e) {
         LOGGER.debug("Graceful shutdown of channel interrupted", e);
+        Thread.currentThread().interrupt();
       }
     }
 
@@ -351,6 +352,7 @@ public class UdpStreamMonitor implements StreamMonitor {
         channelFuture.channel().closeFuture().sync();
       } catch (InterruptedException e) {
         LOGGER.debug("Graceful shutdown of channel future interrupted", e);
+        Thread.currentThread().interrupt();
       }
     }
 
@@ -372,6 +374,7 @@ public class UdpStreamMonitor implements StreamMonitor {
       serverThread.join();
     } catch (InterruptedException e) {
       LOGGER.debug("interrupted while waiting for server thread to join", e);
+      Thread.currentThread().interrupt();
     } finally {
       monitoring = false;
       startTime = null;
@@ -544,7 +547,8 @@ public class UdpStreamMonitor implements StreamMonitor {
       NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
 
       if (networkInterface != null) {
-        return Collections.list(networkInterface.getInetAddresses()).stream()
+        return Collections.list(networkInterface.getInetAddresses())
+            .stream()
             .filter(inetAddress -> inetAddress instanceof Inet4Address)
             .map(inetAddress -> create(networkInterface, inetAddress))
             .findFirst();
@@ -575,6 +579,7 @@ public class UdpStreamMonitor implements StreamMonitor {
       ch.joinGroup(new InetSocketAddress(monitoredAddress, monitoredPort), networkInterface).sync();
     } catch (InterruptedException e) {
       LOGGER.debug("interrupted while waiting for shutdown", e);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -587,6 +592,7 @@ public class UdpStreamMonitor implements StreamMonitor {
       channelFuture = bootstrap.bind(monitoredAddress, monitoredPort).sync();
     } catch (InterruptedException e) {
       LOGGER.debug("interrupted while waiting for shutdown", e);
+      Thread.currentThread().interrupt();
     }
   }
 

@@ -87,7 +87,7 @@ public class MpegTsUdpClient {
     LOGGER = LoggerFactory.getLogger(MpegTsUdpClient.class);
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws InterruptedException {
 
     LOGGER.info("args: {}", args[0]);
 
@@ -227,7 +227,8 @@ public class MpegTsUdpClient {
       int minDatagramSize,
       int maxDatagramSize,
       boolean fractionalTs,
-      String networkInterfaceName) {
+      String networkInterfaceName)
+      throws InterruptedException {
 
     Optional<InetAddress> inetAddressOptional = findLocalAddress(networkInterfaceName);
 
@@ -354,7 +355,7 @@ public class MpegTsUdpClient {
       }
 
       LOGGER.trace("Bytes sent: {} ", bytesSent);
-    } catch (InterruptedException | IOException e) {
+    } catch (IOException e) {
       LOGGER.error("Unable to generate stream.", e);
     } finally {
       // Shut down the event loop to terminate all threads.
@@ -404,7 +405,7 @@ public class MpegTsUdpClient {
     }
   }
 
-  private static Duration getVideoDuration(final String videoFilePath) {
+  private static Duration getVideoDuration(final String videoFilePath) throws InterruptedException {
     try (final ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
       final PumpStreamHandler streamHandler = new PumpStreamHandler(outputStream);
       final CommandLine command = getFFmpegInfoCommand(videoFilePath);
@@ -412,8 +413,6 @@ public class MpegTsUdpClient {
       resultHandler.waitFor();
       final String output = outputStream.toString(StandardCharsets.UTF_8.name());
       return parseVideoDuration(output);
-    } catch (InterruptedException e) {
-      LOGGER.error("Thread interrupted while executing ffmpeg command.", e);
     } catch (UnsupportedEncodingException e) {
       LOGGER.error("Unsupported encoding in ffmpeg output.", e);
     } catch (IllegalArgumentException e) {
@@ -424,8 +423,7 @@ public class MpegTsUdpClient {
     return null;
   }
 
-  private static Duration parseVideoDuration(final String ffmpegOutput)
-      throws IllegalArgumentException {
+  private static Duration parseVideoDuration(final String ffmpegOutput) {
     final Pattern pattern = Pattern.compile("Duration: \\d\\d:\\d\\d:\\d\\d\\.\\d+");
     final Matcher matcher = pattern.matcher(ffmpegOutput);
 
