@@ -87,13 +87,15 @@ public class LocationUpdateField extends UpdateParent.BaseUpdateField {
         .stream()
         .reduce(
             (left, right) -> {
-              final int numGeometries = left.getNumGeometries() + right.getNumGeometries();
-              final Geometry[] bothGeometries = new Geometry[numGeometries];
-              for (int n = 0; n < left.getNumGeometries(); ++n) {
+              final int leftCount = left.getNumGeometries();
+              final int rightCount = right.getNumGeometries();
+              final int total = leftCount + rightCount;
+              final Geometry[] bothGeometries = new Geometry[total];
+              for (int n = 0; n < leftCount; ++n) {
                 bothGeometries[n] = left.getGeometryN(n);
               }
-              for (int n = left.getNumGeometries(); n < numGeometries; ++n) {
-                bothGeometries[n] = right.getGeometryN(n);
+              for (int n = 0; n < rightCount; ++n) {
+                bothGeometries[leftCount + n] = right.getGeometryN(n);
               }
               return GEOMETRY_FACTORY.createGeometryCollection(bothGeometries).union();
             })
