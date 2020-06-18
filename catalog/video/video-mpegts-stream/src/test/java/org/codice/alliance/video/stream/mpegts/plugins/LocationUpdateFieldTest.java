@@ -77,10 +77,9 @@ public class LocationUpdateFieldTest {
 
   @Test
   public void testGeometryCollection() throws ParseException {
-    String wktChild1 = "GEOMETRYCOLLECTION(POINT(40 10), POLYGON((0 0, 10 0, 10 10, 0 10, 0 0)))";
-    String wktChild2 = "POLYGON((10 0, 20 0, 20 10, 10 10, 10 0))";
-    String wktChild3 =
-        "GEOMETRYCOLLECTION(POINT(50 10), POLYGON((20 0, 30 0, 30 10, 20 10, 20 0)))";
+    String wktChild1 = "LINESTRING(0 0, 10 10)";
+    String wktChild2 = "LINESTRING(20 20, 30 30)";
+    String wktChild3 = "POINT(40 40)";
 
     Metacard parentMetacard = mock(Metacard.class);
 
@@ -107,7 +106,7 @@ public class LocationUpdateFieldTest {
 
     WKTReader wktReader = new WKTReader();
     String expectedWkt =
-        "GEOMETRYCOLLECTION(POINT(40 10), POINT(50 10), POLYGON ((20 0, 10 0, 0 0, 0 10, 10 10, 20 10, 30 10, 30 0, 20 0)))";
+        "GEOMETRYCOLLECTION(LINESTRING(0 0, 10 10), LINESTRING(20 20, 30 30), POINT(40 40))";
     Geometry expected = wktReader.read(expectedWkt).norm();
 
     String actualWkt = (String) captor.getValue().getValue();
