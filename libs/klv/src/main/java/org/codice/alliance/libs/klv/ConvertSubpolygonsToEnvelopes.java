@@ -45,10 +45,7 @@ public class ConvertSubpolygonsToEnvelopes implements GeometryOperator {
             .map(Geometry::getEnvelope)
             .toArray(Geometry[]::new);
 
-    Geometry envelopePolygons =
-        envelopes.length == 1
-            ? envelopes[0]
-            : GEOMETRY_FACTORY.createGeometryCollection(envelopes).union();
+    Geometry envelopePolygons = GEOMETRY_FACTORY.createGeometryCollection(envelopes).union();
 
     LOGGER.trace(
         "Converted geometry: {}\n isValid? {}", envelopePolygons, envelopePolygons.isValid());
