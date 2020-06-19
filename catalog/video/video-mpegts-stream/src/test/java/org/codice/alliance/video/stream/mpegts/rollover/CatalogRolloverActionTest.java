@@ -57,7 +57,6 @@ import org.codice.alliance.video.stream.mpegts.SimpleSubject;
 import org.codice.alliance.video.stream.mpegts.filename.FilenameGenerator;
 import org.codice.alliance.video.stream.mpegts.metacard.FrameCenterMetacardUpdater;
 import org.codice.alliance.video.stream.mpegts.metacard.ListMetacardUpdater;
-import org.codice.alliance.video.stream.mpegts.metacard.LocationMetacardUpdater;
 import org.codice.alliance.video.stream.mpegts.metacard.ModifiedDateMetacardUpdater;
 import org.codice.alliance.video.stream.mpegts.metacard.TemporalEndMetacardUpdater;
 import org.codice.alliance.video.stream.mpegts.metacard.TemporalStartMetacardUpdater;
@@ -67,9 +66,6 @@ import org.codice.ddf.platform.util.uuidgenerator.UuidGenerator;
 import org.codice.ddf.security.Security;
 import org.junit.Before;
 import org.junit.Test;
-import org.locationtech.jts.io.ParseException;
-import org.locationtech.jts.io.WKTReader;
-import org.locationtech.jts.io.WKTWriter;
 import org.mockito.ArgumentCaptor;
 
 public class CatalogRolloverActionTest {
@@ -141,8 +137,6 @@ public class CatalogRolloverActionTest {
             context,
             new ListMetacardUpdater(
                 Arrays.asList(
-                    new LocationMetacardUpdater(
-                        postUnionGeometryOperator, GeometryOperator.IDENTITY),
                     new TemporalStartMetacardUpdater(),
                     new TemporalEndMetacardUpdater(),
                     new ModifiedDateMetacardUpdater(),
@@ -278,38 +272,5 @@ public class CatalogRolloverActionTest {
 
     assertThat(geoAttributeList, hasSize(1));
     assertThat(geoAttributeList.get(0).getValue(), is(TEMPORAL_END_DATE));
-  }
-
-  @Test
-  public void testLocationUnion()
-      throws RolloverActionException, SourceUnavailableException, IngestException, ParseException {
-
-    String parentWkt = "POLYGON (( 0 0, 1 0, 1 1, 0 1, 0 0 ))";
-
-    when(createdParentMetacard.getLocation()).thenReturn(parentWkt);
-
-    catalogRolloverAction.doAction(tempFile);
-
-    ArgumentCaptor<Attribute> attributeCaptor = ArgumentCaptor.forClass(Attribute.class);
-    verify(createdParentMetacard, atLeastOnce()).setAttribute(attributeCaptor.capture());
-
-    List<Attribute> geoAttributeList =
-        attributeCaptor
-            .getAllValues()
-            .stream()
-            .filter(attr -> attr.getName().equals(Metacard.GEOGRAPHY))
-            .collect(Collectors.toList());
-
-    assertThat(geoAttributeList, hasSize(1));
-
-    WKTReader wktReader = new WKTReader();
-    WKTWriter wktWriter = new WKTWriter();
-
-    String unionWkt =
-        wktWriter.write(wktReader.read(childWkt).union(wktReader.read(parentWkt)).norm());
-
-    String actualWkt = (String) geoAttributeList.get(0).getValue();
-
-    assertThat(wktWriter.write(wktReader.read(actualWkt).norm()), is(unionWkt));
   }
 }
