@@ -30,6 +30,7 @@ import ddf.catalog.data.AttributeDescriptor;
 import ddf.catalog.data.Metacard;
 import ddf.catalog.data.MetacardType;
 import ddf.catalog.data.impl.AttributeImpl;
+import ddf.catalog.data.types.Core;
 import ddf.catalog.operation.CreateRequest;
 import ddf.catalog.operation.CreateResponse;
 import ddf.catalog.operation.Update;
@@ -48,14 +49,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.codice.alliance.libs.klv.AttributeNameConstants;
-import org.codice.alliance.libs.klv.GeometryOperator;
-import org.codice.alliance.libs.klv.GeometryOperatorList;
-import org.codice.alliance.libs.klv.NormalizeGeometry;
-import org.codice.alliance.libs.klv.SimplifyGeometryFunction;
 import org.codice.alliance.video.stream.mpegts.Context;
 import org.codice.alliance.video.stream.mpegts.SimpleSubject;
 import org.codice.alliance.video.stream.mpegts.filename.FilenameGenerator;
-import org.codice.alliance.video.stream.mpegts.metacard.FrameCenterMetacardUpdater;
 import org.codice.alliance.video.stream.mpegts.metacard.ListMetacardUpdater;
 import org.codice.alliance.video.stream.mpegts.metacard.ModifiedDateMetacardUpdater;
 import org.codice.alliance.video.stream.mpegts.metacard.TemporalEndMetacardUpdater;
@@ -123,9 +119,6 @@ public class CatalogRolloverActionTest {
     Subject subject = mock(Subject.class);
     when(security.getSystemSubject()).thenReturn(subject);
 
-    GeometryOperator postUnionGeometryOperator =
-        new GeometryOperatorList(
-            Arrays.asList(new SimplifyGeometryFunction(), new NormalizeGeometry()));
     UuidGenerator uuidGenerator = mock(UuidGenerator.class);
     when(uuidGenerator.generateUuid()).thenReturn("anId");
 
@@ -139,8 +132,7 @@ public class CatalogRolloverActionTest {
                 Arrays.asList(
                     new TemporalStartMetacardUpdater(),
                     new TemporalEndMetacardUpdater(),
-                    new ModifiedDateMetacardUpdater(),
-                    new FrameCenterMetacardUpdater(postUnionGeometryOperator))),
+                    new ModifiedDateMetacardUpdater())),
             uuidGenerator,
             new SubjectUtils());
 
@@ -190,8 +182,7 @@ public class CatalogRolloverActionTest {
   }
 
   /**
-   * Test that the parent update succeeded after an initial failure. Confirm that the parent has the
-   * proper location, which was a part of the update.
+   * Test that the parent update succeeded after an initial failure.
    *
    * @throws RolloverActionException
    * @throws SourceUnavailableException
@@ -219,11 +210,11 @@ public class CatalogRolloverActionTest {
         attributeCaptor
             .getAllValues()
             .stream()
-            .filter(attr -> attr.getName().equals(Metacard.GEOGRAPHY))
+            .filter(attr -> attr.getName().equals(Core.MODIFIED))
             .collect(Collectors.toList());
 
     assertThat(geoAttributeList, hasSize(1));
-    assertThat(geoAttributeList.get(0).getValue(), is(childWkt));
+    assertThat(geoAttributeList.get(0).getValue(), is(TEMPORAL_END_DATE));
   }
 
   @Test
