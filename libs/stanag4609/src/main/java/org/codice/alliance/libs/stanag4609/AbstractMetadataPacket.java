@@ -14,14 +14,18 @@
 package org.codice.alliance.libs.stanag4609;
 
 import java.util.Arrays;
+import javax.xml.bind.DatatypeConverter;
 import org.codice.ddf.libs.klv.KlvContext;
 import org.codice.ddf.libs.klv.KlvDecoder;
 import org.codice.ddf.libs.klv.KlvDecodingException;
 import org.codice.ddf.libs.klv.data.numerical.KlvUnsignedShort;
 import org.codice.ddf.libs.klv.data.set.KlvLocalSet;
 import org.jcodec.containers.mps.MPSDemuxer.PESPacket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 abstract class AbstractMetadataPacket {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractMetadataPacket.class);
 
   /**
    * Location of the "PES header length" field which contains the number of extra bytes contained in
@@ -98,6 +102,10 @@ abstract class AbstractMetadataPacket {
     final byte[] klvBytes = getKLVBytes();
 
     if (klvBytes != null && klvBytes.length > 0) {
+      if (LOGGER.isTraceEnabled()) {
+        LOGGER.trace("KLV bytes: {}", DatatypeConverter.printHexBinary(klvBytes));
+      }
+
       final KlvContext decodedKLV = decoder.decode(klvBytes);
 
       if (validateChecksum(decodedKLV, klvBytes)) {
