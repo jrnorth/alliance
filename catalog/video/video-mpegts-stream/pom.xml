@@ -206,8 +206,8 @@
                             !sun.security.x509.*,
                             !org.codice.transformer.video.*,
                             !org.apache.commons.collections4.*,
-                            !javax.activation,
                             sun.net.dns;resolution:=optional,
+                            javax.activation;version="${javax.activation.version}",
                             *
                         </Import-Package>
                         <Embed-Dependency>

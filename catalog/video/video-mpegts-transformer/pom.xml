@@ -167,7 +167,7 @@
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Import-Package>
                             !org.bouncycastle.crypto.*,
-                            ! javax.activation.*,
+                            javax.activation;version="${javax.activation.version}",
                             ddf.catalog.transform.*,
                             *
                         </Import-Package>
