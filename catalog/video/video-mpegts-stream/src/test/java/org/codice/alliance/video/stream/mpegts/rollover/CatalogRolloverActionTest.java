@@ -201,7 +201,7 @@ public class CatalogRolloverActionTest {
 
     ArgumentCaptor<UpdateRequest> argumentCaptor = ArgumentCaptor.forClass(UpdateRequest.class);
 
-    verify(catalogFramework, times(3)).update(argumentCaptor.capture());
+    verify(catalogFramework, times(2)).update(argumentCaptor.capture());
 
     ArgumentCaptor<Attribute> attributeCaptor = ArgumentCaptor.forClass(Attribute.class);
     verify(createdParentMetacard, atLeastOnce()).setAttribute(attributeCaptor.capture());
@@ -223,7 +223,7 @@ public class CatalogRolloverActionTest {
 
     ArgumentCaptor<UpdateRequest> argumentCaptor = ArgumentCaptor.forClass(UpdateRequest.class);
 
-    verify(catalogFramework, times(2)).update(argumentCaptor.capture());
+    verify(catalogFramework).update(argumentCaptor.capture());
 
     ArgumentCaptor<Attribute> attributeCaptor = ArgumentCaptor.forClass(Attribute.class);
     verify(createdParentMetacard, atLeastOnce()).setAttribute(attributeCaptor.capture());
@@ -245,7 +245,7 @@ public class CatalogRolloverActionTest {
 
     ArgumentCaptor<UpdateRequest> argumentCaptor = ArgumentCaptor.forClass(UpdateRequest.class);
 
-    verify(catalogFramework, times(2)).update(argumentCaptor.capture());
+    verify(catalogFramework).update(argumentCaptor.capture());
 
     ArgumentCaptor<Attribute> attributeCaptor = ArgumentCaptor.forClass(Attribute.class);
     verify(createdParentMetacard, atLeastOnce()).setAttribute(attributeCaptor.capture());

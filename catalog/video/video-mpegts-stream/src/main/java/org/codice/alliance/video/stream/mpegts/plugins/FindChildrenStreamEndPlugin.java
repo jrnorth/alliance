@@ -13,6 +13,10 @@
  */
 package org.codice.alliance.video.stream.mpegts.plugins;
 
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toList;
+
+import ddf.catalog.data.Attribute;
 import ddf.catalog.data.Metacard;
 import ddf.catalog.data.Result;
 import ddf.catalog.data.types.Associations;
@@ -26,7 +30,9 @@ import ddf.catalog.operation.impl.QueryImpl;
 import ddf.catalog.operation.impl.QueryRequestImpl;
 import ddf.catalog.source.SourceUnavailableException;
 import ddf.catalog.source.UnsupportedQueryException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -89,7 +95,14 @@ public class FindChildrenStreamEndPlugin implements StreamEndPlugin {
     Handler handler = factory.build();
 
     Filter filter =
-        filterBuilder.attribute(Associations.DERIVED).is().equalTo().text(parentMetacard.getId());
+        Optional.ofNullable(parentMetacard.getAttribute(Associations.DERIVED))
+            .map(Attribute::getValues)
+            .orElseGet(ArrayList::new)
+            .stream()
+            .filter(String.class::isInstance)
+            .map(String.class::cast)
+            .map(derivedId -> filterBuilder.attribute(Core.ID).is().equalTo().text(derivedId))
+            .collect(collectingAndThen(toList(), filterBuilder::anyOf));
 
     int startIndex = 1;
     Long expectedReturnCount = null;
@@ -184,6 +197,7 @@ public class FindChildrenStreamEndPlugin implements StreamEndPlugin {
 
   /** Factory for building {@link Handler} */
   public interface Factory {
+
     Handler build();
   }
 }

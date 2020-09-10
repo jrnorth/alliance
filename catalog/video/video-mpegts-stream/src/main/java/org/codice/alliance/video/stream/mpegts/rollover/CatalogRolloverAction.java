@@ -127,8 +127,7 @@ public class CatalogRolloverAction extends BaseRolloverAction {
   }
 
   @Override
-  public MetacardImpl doAction(MetacardImpl metacard, File tempFile)
-      throws RolloverActionException {
+  public MetacardImpl doAction(MetacardImpl metacard, File tempFile) {
 
     return context.modifyParentOrChild(
         isParentDirty -> {
@@ -154,8 +153,6 @@ public class CatalogRolloverAction extends BaseRolloverAction {
 
                 for (Metacard childMetacard : createResponse.getCreatedMetacards()) {
                   LOGGER.trace("created catalog content with id={}", childMetacard.getId());
-
-                  linkChildToParent(childMetacard);
 
                   updateParentWithChildMetadata(childMetacard);
                 }
@@ -211,21 +208,6 @@ public class CatalogRolloverAction extends BaseRolloverAction {
 
   private UpdateRequest createUpdateRequest(String id, Metacard metacard) {
     return new UpdateRequestImpl(id, metacard);
-  }
-
-  private void linkChildToParent(Metacard childMetacard) {
-    setDerivedAttribute(childMetacard);
-
-    UpdateRequest updateChild = createUpdateRequest(childMetacard.getId(), childMetacard);
-
-    submitChildUpdateRequest(updateChild);
-  }
-
-  private void setDerivedAttribute(Metacard childMetacard) {
-    if (context.getParentMetacard().isPresent()) {
-      childMetacard.setAttribute(
-          new AttributeImpl(Metacard.DERIVED, context.getParentMetacard().get().getId()));
-    }
   }
 
   private CreateResponse submitStorageCreateRequest(CreateStorageRequest createRequest)

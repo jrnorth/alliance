@@ -15,6 +15,8 @@ package org.codice.alliance.test.itests;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.closeTo;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.hasXPath;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
@@ -38,6 +40,7 @@ import java.io.InputStream;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -143,6 +146,14 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
 
     final XmlPathConfig xmlPathConfig =
         new XmlPathConfig().declaredNamespace("gml", "http://www.opengis.net/gml");
+
+    final List<String> childIds =
+        executeOpenSearch("xml", "q=mpegts-stream*")
+            .extract()
+            .xmlPath(xmlPathConfig)
+            .getList("metacards.metacard.@gml:id");
+    assertThat("There should be 2 child metacards.", childIds, hasSize(2));
+
     final ValidatableResponse parentMetacardResponse =
         await("The parent metacard location to be updated")
             .atMost(1, TimeUnit.MINUTES)
@@ -171,27 +182,22 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
             hasXPath(
                 "/metacards/metacard/string[@name='resource-uri']/value", is(udpStreamAddress)));
 
-    final String parentMetacardId =
-        parentMetacardResponse.extract().xmlPath().getString(METACARD_ID_XMLPATH);
-
-    await("The child metacards to be linked to the parent")
-        .atMost(30, TimeUnit.SECONDS)
-        .until(
-            () ->
-                executeOpenSearch("xml", "q=mpegts-stream*")
-                        .extract()
-                        .xmlPath()
-                        .getInt(
-                            "metacards.metacard.string.findAll { it.@name == 'metacard.associations.derived' }.size()")
-                    == 2);
+    final List<String> derivedIdsOnParent =
+        parentMetacardResponse
+            .extract()
+            .xmlPath(xmlPathConfig)
+            .getList(
+                "metacards.metacard.string.find{ it.@name == 'metacard.associations.derived' }.value*.text()");
+    assertThat(
+        "The derived associations on the parent metacard were not correct.",
+        derivedIdsOnParent,
+        containsInAnyOrder(childIds.toArray(new String[0])));
 
     final String chunkDividerDate = "2009-06-19T07:26:30Z";
 
-    verifyChunkMetacard(
-        "dtend=" + chunkDividerDate, 1212.82825971, "-110.058257 54.791167", parentMetacardId);
+    verifyChunkMetacard("dtend=" + chunkDividerDate, 1212.82825971, "-110.058257 54.791167");
 
-    verifyChunkMetacard(
-        "dtstart=" + chunkDividerDate, 1206.75516899, "-110.058421 54.791636", parentMetacardId);
+    verifyChunkMetacard("dtstart=" + chunkDividerDate, 1206.75516899, "-110.058421 54.791636");
 
     getServiceManager().stopFeature(true, "sample-mpegts-streamgenerator");
   }
@@ -261,10 +267,7 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
   }
 
   private void verifyChunkMetacard(
-      String dateBound,
-      double expectedAltitude,
-      String expectedFrameCenterWkt,
-      String expectedParentId) {
+      String dateBound, double expectedAltitude, String expectedFrameCenterWkt) {
     final ValidatableResponse response =
         executeOpenSearch("xml", "q=mpegts-stream*", dateBound)
             .log()
@@ -283,11 +286,7 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
             .body(
                 hasXPath(
                     "/metacards/metacard/geometry[@name='media.frame-center']/value/*[local-name()='Point']/*[local-name()='pos']",
-                    is(expectedFrameCenterWkt)))
-            .body(
-                hasXPath(
-                    "/metacards/metacard/string[@name='metacard.associations.derived']/value",
-                    is(expectedParentId)));
+                    is(expectedFrameCenterWkt)));
 
     final double altitude =
         response
