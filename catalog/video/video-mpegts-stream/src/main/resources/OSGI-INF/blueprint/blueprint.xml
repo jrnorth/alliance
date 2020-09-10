@@ -191,6 +191,7 @@
                         <bean class="org.codice.alliance.video.stream.mpegts.metacard.SecurityDisseminationControlsMetacardUpdater"/>
                         <bean class="org.codice.alliance.video.stream.mpegts.metacard.SecurityClassificationSystemMetacardUpdater"/>
                         <bean class="org.codice.alliance.video.stream.mpegts.metacard.SecurityReleasabilityMetacardUpdater"/>
+                        <bean class="org.codice.alliance.video.stream.mpegts.metacard.DerivedAssociationMetacardUpdater" />
                     </list>
                 </argument>
             </bean>
