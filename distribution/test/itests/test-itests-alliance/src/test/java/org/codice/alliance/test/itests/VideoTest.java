@@ -16,6 +16,7 @@ package org.codice.alliance.test.itests;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.hasXPath;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
@@ -151,6 +152,7 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
             .extract()
             .xmlPath(xmlPathConfig)
             .getList("metacards.metacard.@gml:id");
+    assertThat("There should be 2 child metacards.", childIds, hasSize(2));
 
     final ValidatableResponse parentMetacardResponse =
         await("The parent metacard location to be updated")
