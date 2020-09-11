@@ -186,7 +186,6 @@ public class VideoTest extends AbstractAllianceIntegrationTest {
             .xmlPath(xmlPathConfig)
             .getList(
                 "metacards.metacard.string.findAll{ it.@name == 'metacard.associations.derived' }*.value");
-    LOGGER.error("derivedIdsOnParent: {}", derivedIdsOnParent);
     assertThat(
         "The derived associations on the parent metacard were not correct.",
         derivedIdsOnParent,
