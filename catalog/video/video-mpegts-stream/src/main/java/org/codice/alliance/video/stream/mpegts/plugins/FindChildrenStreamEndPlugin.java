@@ -96,9 +96,7 @@ public class FindChildrenStreamEndPlugin implements StreamEndPlugin {
 
     Filter filter =
         Optional.ofNullable(parentMetacard.getAttribute(Associations.DERIVED))
-            .map(Attribute::getValues)
-            .orElseGet(ArrayList::new)
-            .stream()
+            .map(Attribute::getValues).orElseGet(ArrayList::new).stream()
             .filter(String.class::isInstance)
             .map(String.class::cast)
             .map(derivedId -> filterBuilder.attribute(Core.ID).is().equalTo().text(derivedId))
